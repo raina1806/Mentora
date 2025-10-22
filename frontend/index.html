@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Real-Time Emotion Detection</title>
+</head>
+<body>
+    <h2>Real-Time Emotion Detection</h2>
+    <video id="video" width="400" height="300" autoplay></video>
+    <canvas id="canvas" width="400" height="300" style="display:none;"></canvas>
+    <p id="emotionLabel">Loading...</p>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const label = document.getElementById('emotionLabel');
+
+        // Get webcam stream
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => video.srcObject = stream)
+            .catch(err => console.error(err));
+
+        async function sendFrame() {
+            // Draw video frame to canvas
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(async function(blob) {
+                const formData = new FormData();
+                formData.append('frame', blob, 'frame.jpg');
+
+                try {
+                    const response = await fetch('http://127.0.0.1:5000/predict_emotion', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    label.innerText = `Emotion: ${data.emotion}, Confidence: ${(data.confidence*100).toFixed(1)}%`;
+                } catch (err) {
+                    console.error(err);
+                }
+            }, 'image/jpeg');
+        }
+
+        // Send a frame every 500ms (~2 fps)
+        setInterval(sendFrame, 500);
+    </script>
+</body>
+</html>
